@@ -28,39 +28,66 @@ header <- dashboardHeader()
 sidebar <- dashboardSidebar(
   
   sidebarMenu(
-    menuItem("Current Performance"), tabName = "Current Performance", icon = icon("dashboard"),
-    menuItem("Widgets", icon = icon("th"), tabName = "widgets",
-            badgeColor = "green")
-  ),
-  
-  menuItem('b',
-           tabName = 'b',
-           icon = icon('line-chart'),
-           menuSubItem(selectInput("SelectedRace",
-                                   "Race:",
-                                   choices = c("test1, test2"),
-                                   multiple = T,
-                                   selectize = T,
-                                   selected = c("test1"))),
-           menuSubItem('m',
-                       tabName = 'm',
-                       icon = icon('line-chart')))
+    selectInput(inputId = "selectResturant", label = "Resturant", 
+                choices = list("Choice 1" = 1, "Choice 2" = 2,
+                               "Choice 3" = 3), selected = 1),
+    menuItem(text = "Current Performance", 
+             tabName = "CP",
+             icon = icon("dashboard")),
+    menuItem(text = "Historical Preformance Comparison", 
+             tabName = "HPC", 
+             icon = icon("th")),
+    menuItem("Table of Resturant Data",
+             tabName = 'table',
+             icon = icon('line-chart'))
+  )
 )
 
-body <- dashboardBody(
-  tabItem(tabName = "Current Performance", 
+body <- dashboardBody(tabItems(
+  
+  tabItem(tabName = "CP", 
     fluidRow(
       valueBoxOutput("TimeSinceInspection"),
       valueBoxOutput("GradeLastestInspection"),
       valueBoxOutput("LastestViolationCount")
     ),
+    fluidRow(
     box(
       title = "Number of Violations Over Time", solidHeader = TRUE,
-      collapsible = TRUE,
-      plotlyOutput("ViolationsOverTime", height = 250)
+      collapsible = FALSE,
+      plotlyOutput("ViolationsOverTime")
+    ),
+    box(
+      title = "Noted Violations", solidHeader = TRUE,
+      collapsible = FALSE,
+      plotlyOutput("ViolationsOverTime")
     )
+    )
+  ),
+  
+  
+  tabItem(tabName = "HPC", 
+          box(
+            title = "Number of Violations Over Time within Zip", solidHeader = TRUE,
+            collapsible = FALSE,
+            plotlyOutput("ViolationsOverTime", height = 250)
+          ),
+          box(
+            title = "Number of Violations by Comparison by Cuisine", solidHeader = TRUE,
+            collapsible = FALSE,
+            plotlyOutput("ViolationsOverTime", height = 250)
+          )
+  ),
+  
+  tabItem(tabName = "table",
+          fluidPage(
+            box(title = "Selected Resturants Data", 
+                dataTableOutput("table"), width = 12))
+  )
+
   )
 )
+
 
 ui <- dashboardPage(header, sidebar, body)
 
