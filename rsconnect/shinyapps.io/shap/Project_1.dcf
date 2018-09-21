@@ -1,0 +1,13 @@
+name: Project_1
+title: Project_1
+username:
+account: shap
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 462579
+bundleId: 1598452
+url: https://shap.shinyapps.io/Project_1/
+when: 1537556283.39144
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: data/Restaurant_Inspection_Open_Data_Dictionary_082214.xlsx

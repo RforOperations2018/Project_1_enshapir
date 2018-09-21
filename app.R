@@ -61,7 +61,7 @@ body <- dashboardBody(tabItems(
           fluidRow(
             tabBox(title = "",
                    width = 12,
-                   tabPanel("Noted Major Violations", textOutput("plot_height")),
+                   tabPanel("Noted Major Violations", DT::dataTableOutput("vioTable")),
                    tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime")))
           )
   ),
@@ -118,8 +118,17 @@ server <- function(input, output, session=session) {
       filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
     valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$SCORE, icon = icon("exclamation-triangle "), color = "green")
   })
+  # 
+  # test1 %>% group_by(`INSPECTION DATE`) %>% 
+  #   +     summarize(type = paste(sort(unique(`VIOLATION DESCRIPTION`)),collapse=", "))
   
-  
+  # Data table of Resturnat Inspections
+  output$vioTable <- DT::renderDataTable({
+    res <- resInput()
+    resCurrent <- res %>%
+      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+    subset(resCurrent, select = c(`VIOLATION CODE`, `VIOLATION DESCRIPTION`))
+  })
   
   # Data table of Resturnat Inspections
   output$table <- DT::renderDataTable({
