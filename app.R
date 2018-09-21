@@ -36,14 +36,6 @@ sidebar <- dashboardSidebar(
                    selected = sort(unique(Resturant.load$DBA)[1]), 
                    multiple = FALSE,
                    options = list(maxItems = 1)),
-     # selectInput(inputId = "selectResturant", 
-     #             label = "Resturant", 
-     #             choices = c(sort(unique(Resturant.load$DBA))),
-     #             selected = sort(unique(Resturant.load$DBA)[1])),
-     
-    menuItem(text = "Current Performance1", 
-             tabName = "plot",
-             icon = icon("dashboard")),
     
      menuItem(text = "Current Performance", 
              tabName = "CP",
@@ -60,16 +52,17 @@ sidebar <- dashboardSidebar(
 )
 
 body <- dashboardBody(tabItems(
-  tabItem("plot",
+  tabItem("CP",
           fluidRow(
-            infoBoxOutput("mass"),
-            valueBoxOutput("TimeSinceInspection")
+            valueBoxOutput("TimeSinceInspection"),
+            valueBoxOutput("GradeLast"),
+            valueBoxOutput("ViolationCnt")
           ),
           fluidRow(
-            tabBox(title = "Plot",
+            tabBox(title = "",
                    width = 12,
-                   tabPanel("Mass", plotlyOutput("plot_mass")),
-                   tabPanel("Height", plotlyOutput("plot_height")))
+                   tabPanel("Noted Major Violations", textOutput("plot_height")),
+                   tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime")))
           )
   ),
   tabItem("table",
@@ -157,13 +150,34 @@ server <- function(input, output, session=session) {
 
   output$TimeSinceInspection <- renderValueBox({
     res <- resInput()
+    resCurrent <- res %>%
+      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
     currentDate <- Sys.Date()
-    lastInspect <- res$`INSPECTION DATE`
+    lastInspect <- resCurrent$`INSPECTION DATE`
     days.since.last <- as.numeric(currentDate - lastInspect)
-    valueBox(subtitle = "Days Since Last Inspection", value = days.since.last, icon = icon("sort-numeric-asc"), color = "green")
+    valueBox(subtitle = "Days Since Last Inspection", value = days.since.last, icon = icon("calendar"), color = "green")
   })
 
-  output$GradeLastestInspection <- renderValueBox({
+  output$GradeLast <- renderValueBox({
+    res <- resInput()
+    resCurrent <- res %>%
+      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+    valueBox(subtitle = "Grade on Last Inspection", value = resCurrent$GRADE, icon = icon("id-card-o"), color = "green")
+  })
+  
+  output$ViolationCnt <- renderValueBox({
+    res <- resInput()
+    resCurrent <- res %>%
+      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+    valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$SCORE, icon = icon("exclamation-triangle "), color = "green")
+  })
+
+  
+  
+  
+  
+  
+   output$GradeLastestInspection <- renderValueBox({
     days.since.last <- as.numeric(currentDate - lastInspect)
     valueBox(subtitle = "Days Since Last Inspection", value = 45, icon = NULL, color = "green")
   })
@@ -183,20 +197,7 @@ server <- function(input, output, session=session) {
     valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")
   })
 
-# Mass mean info box
-output$mass <- renderInfoBox({
-  sw <- swInput()
-  num <- round(mean(sw$mass, na.rm = T), 2)
 
-  infoBox("Avg Mass", value = num, subtitle = paste(nrow(sw), "characters"), icon = icon("balance-scale"), color = "purple")
-})
-# Height mean value box
-output$height <- renderValueBox({
-  sw <- swInput()
-  num <- round(mean(sw$height, na.rm = T), 2)
-
-  valueBox(subtitle = "Avg Height", value = num, icon = icon("sort-numeric-asc"), color = "green")
-})
 
 
 }
