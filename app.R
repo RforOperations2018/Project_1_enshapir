@@ -62,7 +62,13 @@ body <- dashboardBody(tabItems(
             tabBox(title = "",
                    width = 12,
                    tabPanel("Noted Major Violations", DT::dataTableOutput("vioTable")),
-                   tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime")))
+                   tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime"),
+                            dateRangeInput(inputId = "date", 
+                                           label ="Choose a Date",
+                                           start = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE), 
+                                           end = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
+                                           min = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
+                                           max = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE))))
           )
   ),
   
@@ -70,13 +76,13 @@ body <- dashboardBody(tabItems(
             fluidRow(
               tabBox(title = "",
                      width = 12,
-                     tabPanel("Number of Violations Over Time within Zip", textOutput("VioZip"),
-                              dateRangeInput(inputId = "date", 
-                                        label ="Choose a Date",
-                                        start = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE), 
-                                        end = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
-                                        min = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
-                                        max = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE))),
+                     tabPanel("Number of Crititcal Violations Over Time Comparison",plotlyOutput("Viocrit"),
+                              selectInput(inputId = "streetComp", 
+                                          label = "Cuisine",
+                                          choices = sort(unique(Resturant.load$DBA)),
+                                          multiple = TRUE,
+                                          selectize = TRUE,
+                                          selected = unique(Resturant.load$DBA)[2])),
                      tabPanel("Comparison of Violations by Cuisine", plotlyOutput("VioCuisine"),
                               selectInput(inputId = "selectCuis", 
                                           label = "Cuisine",
@@ -116,6 +122,14 @@ server <- function(input, output, session=session) {
       filter(`CUISINE DESCRIPTION` == input$selectCuis | `CUISINE DESCRIPTION` ==resInput()$`CUISINE DESCRIPTION`)
   })
   
+  resInput2 <- reactive({
+    Resturant <- Resturant.load %>% 
+      group_by(DBA, `INSPECTION DATE`, STREET, SCORE) %>% 
+      summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>% 
+      filter(DBA %in% input$streetComp | DBA %in% resInput()$DBA)
+  })
+  
+  
   output$TimeSinceInspection <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
@@ -139,9 +153,7 @@ server <- function(input, output, session=session) {
       filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
     valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$SCORE, icon = icon("exclamation-triangle "), color = "green")
   })
-  # 
-  # test1 %>% group_by(`INSPECTION DATE`) %>% 
-  #   +     summarize(type = paste(sort(unique(`VIOLATION DESCRIPTION`)),collapse=", "))
+
   
   # Data table of Resturnat Inspections
   output$vioTable <- DT::renderDataTable({
@@ -168,23 +180,30 @@ server <- function(input, output, session=session) {
         geom_line() +
         labs(x="Inspection Dates", y="Violation Score"))
   })
-  # observeEvent(input$selectResturant, {
-  #   res1 <- resInput()
-  #   radioChioce <- subset(Resturant.load, -c(res1$`CUISINE DESCRIPTION`)
-  #   updateRadioButtons(session, inputId = "selectCuis", 
-  #                      label = "Cuisine:", 
-  #                      choices = radioChioce, 
-  #                      selected = radioChioce[1])
+  
+  output$Viocrit <- renderPlotly({
+    data1 <- resInput2()
+    ggplotly(
+      ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y= crits, color=DBA))+
+        geom_line() +
+        labs(x="Inspection Dates", y="Number of Critical Violation"))
+  })
+  
+  observeEvent(input$selectResturant, {
+    updateDateRangeInput(session = session,
+                         inputId = date,
+                         start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+                         end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+                         min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+                         max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)) 
+  })
+           
+  # observeEvent(input$reset, {
+  #   updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
+  #   showNotification("You have successfully reset to show all races", type = "message")
   # })
 
-           
-  observeEvent(input$reset, {
-    updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
-    showNotification("You have successfully reset to show all races", type = "message")
-  })
 
-  
-  
   
   # Data table of Resturnat Inspections
   output$table <- DT::renderDataTable({
@@ -198,3 +217,21 @@ server <- function(input, output, session=session) {
 # Run the application 
 shinyApp(ui = ui, server = server)
 
+
+# 
+# test1 %>% group_by(`INSPECTION DATE`) %>% 
+#   +     summarize(type = paste(sort(unique(`VIOLATION DESCRIPTION`)),collapse=", "))
+
+# Resturant.load %>%
+#   group_by(DBA, `INSPECTION DATE`, STREET, SCORE) %>%
+#   summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>%
+#   filter(DBA %in% c("CHAPATI HOUSE", "JIN RAMEN"))
+
+# observeEvent(input$selectResturant, {
+#   res1 <- resInput()
+#   radioChioce <- subset(Resturant.load, -c(res1$`CUISINE DESCRIPTION`)
+#   updateRadioButtons(session, inputId = "selectCuis", 
+#                      label = "Cuisine:", 
+#                      choices = radioChioce, 
+#                      selected = radioChioce[1])
+# })
