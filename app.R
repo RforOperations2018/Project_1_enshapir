@@ -63,12 +63,9 @@ body <- dashboardBody(tabItems(
                    width = 12,
                    tabPanel("Noted Major Violations", DT::dataTableOutput("vioTable")),
                    tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime"),
-                            dateRangeInput(inputId = "date", 
-                                           label ="Choose a Date",
-                                           start = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE), 
-                                           end = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
-                                           min = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
-                                           max = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE))))
+                            uiOutput("dateRange")
+                            )
+                   )
           )
   ),
   
@@ -128,6 +125,16 @@ server <- function(input, output, session=session) {
       summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>% 
       filter(DBA %in% input$streetComp | DBA %in% resInput()$DBA)
   })
+  
+  output$dateRange <- renderUI({
+    dateRangeInput(inputId = "dateRange1",
+                   label = "Pick a Date Range",
+                   start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE), 
+                   end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+                   min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+                   max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)
+                   )
+    })
   
   
   output$TimeSinceInspection <- renderValueBox({
@@ -189,14 +196,14 @@ server <- function(input, output, session=session) {
         labs(x="Inspection Dates", y="Number of Critical Violation"))
   })
   
-  observeEvent(input$selectResturant, {
-    updateDateRangeInput(session = session,
-                         inputId = date,
-                         start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-                         end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-                         min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-                         max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)) 
-  })
+  # observeEvent(input$selectResturant, {
+  #   updateDateRangeInput(session = session,
+  #                        inputId = date,
+  #                        start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+  #                        end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+  #                        min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+  #                        max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)) 
+  # })
            
   # observeEvent(input$reset, {
   #   updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
