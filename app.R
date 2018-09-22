@@ -19,6 +19,7 @@ library(shinythemes)
 #file path for data
 Resturant.file.path <- "DOHMH_New_York_City_Restaurant_Inspection_Results_morn_side.xlsx"
 
+#loading in resturant data
 Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
 Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
 Resturant.load <- Resturant.load %>% filter(`INSPECTION DATE` > "2014-01-01" & BORO == 'MANHATTAN')
@@ -37,11 +38,11 @@ sidebar <- dashboardSidebar(
                    multiple = FALSE,
                    options = list(maxItems = 1)),
     
-     menuItem(text = "Current Performance", 
+     menuItem(text = "Restaurant Performance", 
              tabName = "CP",
              icon = icon("dashboard")),
     
-     menuItem(text = "Historical Preformance Comparison", 
+     menuItem(text = "Performance Comparison", 
              tabName = "HPC", 
              icon = icon("th")),
     
@@ -54,6 +55,7 @@ sidebar <- dashboardSidebar(
 body <- dashboardBody(tabItems(
   tabItem("CP",
           fluidRow(
+            #value boxes for Time since last inspection, grade on most recent inspection, violation score on last inspection 
             valueBoxOutput("TimeSinceInspection"),
             valueBoxOutput("GradeLast"),
             valueBoxOutput("ViolationCnt")
@@ -61,7 +63,9 @@ body <- dashboardBody(tabItems(
           fluidRow(
             tabBox(title = "",
                    width = 12,
+              # a table of the noted critical violations on the most recent inspection 
                    tabPanel("Noted Crititcal Violations", DT::dataTableOutput("vioTable")),
+              #a historical look at the chosen restaurants violation score
                    tabPanel("Number of Violation Score Over Time", plotlyOutput("ViolationsOverTime"),
                             uiOutput("dateRange")
                             )
@@ -73,9 +77,11 @@ body <- dashboardBody(tabItems(
             fluidRow(
               tabBox(title = "",
                      width = 12,
+                     #presenting a graph where the user can compare resturants by Critical Violations 
                      tabPanel("Number of Crititcal Violations Over Time Comparison",plotlyOutput("Viocrit"),
                               uiOutput("streetComp1")
                               ),
+                     #presenting a graph where the user can compare resturants violation score by Cuisine type
                      tabPanel("Comparison of Violations by Cuisine", plotlyOutput("VioCuisine"),
                               uiOutput("selectCuis1")
                               )
@@ -84,7 +90,7 @@ body <- dashboardBody(tabItems(
             )
 
     ),
-  
+  #a table of all inspection information for the chosen restaurant
   tabItem("table",
           fluidPage(
             box(title = "Selected Resturant Data", DT::dataTableOutput("table"), width = 12))
@@ -98,18 +104,21 @@ body <- dashboardBody(tabItems(
 # Define server logic
 server <- function(input, output, session=session) {
 
+  #creating a dataset of a single restaurant's inspections
   resInput <- reactive({
     Resturant <- Resturant.load %>%
       # selectResturant filter
       filter(DBA == input$selectResturant)
   })
   
+  #creating a dataset of restaurants selected by cuisine type
   cuInput <- reactive({
     Resturant <- Resturant.load %>%
       # selectResturant filter
       filter(`CUISINE DESCRIPTION` == input$selectCuis | `CUISINE DESCRIPTION` ==resInput()$`CUISINE DESCRIPTION`)
   })
   
+  #creating a dataset with counts of critical inputs per resturant
   resInput2 <- reactive({
     Resturant <- Resturant.load %>% 
       group_by(DBA, `INSPECTION DATE`, STREET, SCORE) %>% 
@@ -117,6 +126,7 @@ server <- function(input, output, session=session) {
       filter(DBA %in% input$streetComp | DBA %in% resInput()$DBA)
   })
   
+  #A date range selection for the currently selected restaurant’s inspection dates
   output$dateRange <- renderUI({
     dateRangeInput(inputId = "dateRange1",
                    label = "Pick a Date Range",
@@ -127,7 +137,7 @@ server <- function(input, output, session=session) {
                    )
     })
   
-  
+  #A selection box for resturant that does not show the currently selected restaurant as an option
   output$streetComp1 <- renderUI({
     resChoice <-  Resturant.load %>% filter(DBA != resInput()$DBA)
     
@@ -140,7 +150,7 @@ server <- function(input, output, session=session) {
                    )
   })
   
-  
+  #A selection box for cuisine type that does not show the currently selected restaurant’s cuisine as an option
   output$selectCuis1 <- renderUI({
     cuChoice <-  Resturant.load %>% filter(`CUISINE DESCRIPTION` != resInput()$`CUISINE DESCRIPTION`)
     
@@ -153,7 +163,7 @@ server <- function(input, output, session=session) {
     )
   })
   
-  
+  #A value box showing the number of days since the most recent inspection
   output$TimeSinceInspection <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
@@ -164,6 +174,7 @@ server <- function(input, output, session=session) {
     valueBox(subtitle = "Days Since Last Inspection", value = days.since.last, icon = icon("calendar"), color = "green")
   })
 
+  #A value box showing the Grade on the most recent inspection
   output$GradeLast <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
@@ -171,6 +182,7 @@ server <- function(input, output, session=session) {
     valueBox(subtitle = "Grade on Last Inspection", value = resCurrent$GRADE, icon = icon("id-card-o"), color = "green")
   })
   
+  #A value box showing the Violation score on the most recent inspection 
   output$ViolationCnt <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
@@ -206,6 +218,7 @@ server <- function(input, output, session=session) {
         labs(x="Inspection Dates", y="Violation Score"))
   })
   
+  #A plot of the number of critical violations per inspection date
   output$Viocrit <- renderPlotly({
     data1 <- resInput2()
     ggplotly(
@@ -228,37 +241,3 @@ server <- function(input, output, session=session) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
-
-# 
-# test1 %>% group_by(`INSPECTION DATE`) %>% 
-#   +     summarize(type = paste(sort(unique(`VIOLATION DESCRIPTION`)),collapse=", "))
-
-# Resturant.load %>%
-#   group_by(DBA, `INSPECTION DATE`, STREET, SCORE) %>%
-#   summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>%
-#   filter(DBA %in% c("CHAPATI HOUSE", "JIN RAMEN"))
-
-# observeEvent(input$selectResturant, {
-#   res1 <- resInput()
-#   radioChioce <- subset(Resturant.load, -c(res1$`CUISINE DESCRIPTION`)
-#   updateRadioButtons(session, inputId = "selectCuis", 
-#                      label = "Cuisine:", 
-#                      choices = radioChioce, 
-#                      selected = radioChioce[1])
-# })
-
-
-# observeEvent(input$selectResturant, {
-#   updateDateRangeInput(session = session,
-#                        inputId = date,
-#                        start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-#                        end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-#                        min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-#                        max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)) 
-# })
-
-# observeEvent(input$reset, {
-#   updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
-#   showNotification("You have successfully reset to show all races", type = "message")
-# })
