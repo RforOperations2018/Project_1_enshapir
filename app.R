@@ -62,7 +62,7 @@ body <- dashboardBody(tabItems(
             tabBox(title = "",
                    width = 12,
                    tabPanel("Noted Crititcal Violations", DT::dataTableOutput("vioTable")),
-                   tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime"),
+                   tabPanel("Number of Violation Score Over Time", plotlyOutput("ViolationsOverTime"),
                             uiOutput("dateRange")
                             )
                    )
@@ -74,15 +74,11 @@ body <- dashboardBody(tabItems(
               tabBox(title = "",
                      width = 12,
                      tabPanel("Number of Crititcal Violations Over Time Comparison",plotlyOutput("Viocrit"),
-                              uiOutput("streetComp1")),
+                              uiOutput("streetComp1")
+                              ),
                      tabPanel("Comparison of Violations by Cuisine", plotlyOutput("VioCuisine"),
-                              selectInput(inputId = "selectCuis", 
-                                          label = "Cuisine",
-                                          choices = sort(unique(Resturant.load$`CUISINE DESCRIPTION`)),
-                                          multiple = TRUE,
-                                          selectize = TRUE,
-                                          selected = unique(Resturant.load$`CUISINE DESCRIPTION`)[2]))
-                        
+                              uiOutput("selectCuis1")
+                              )
                      )
                      
             )
@@ -136,7 +132,7 @@ server <- function(input, output, session=session) {
     resChoice <-  Resturant.load %>% filter(DBA != resInput()$DBA)
     
     selectInput(inputId = "streetComp",
-                   label = "Cuisine",
+                   label = "Resturant Comparison",
                    choices = sort(unique(resChoice$DBA)),
                    multiple = TRUE,
                    selectize = TRUE,
@@ -144,7 +140,18 @@ server <- function(input, output, session=session) {
                    )
   })
   
-
+  
+  output$selectCuis1 <- renderUI({
+    cuChoice <-  Resturant.load %>% filter(`CUISINE DESCRIPTION` != resInput()$`CUISINE DESCRIPTION`)
+    
+    selectInput(inputId = "selectCuis",
+                label = "Cuisine",
+                choices = sort(unique(cuChoice$`CUISINE DESCRIPTION`)),
+                multiple = TRUE,
+                selectize = TRUE,
+                selected = unique(cuChoice$`CUISINE DESCRIPTION`)[1]
+    )
+  })
   
   
   output$TimeSinceInspection <- renderValueBox({
