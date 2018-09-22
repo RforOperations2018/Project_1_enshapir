@@ -173,6 +173,7 @@ server <- function(input, output, session=session) {
   # A plot showing the violations overtime of the resturant
   output$ViolationsOverTime <- renderPlotly({
     data1 <- resInput()
+    data1 <- data1 %>% filter(`INSPECTION DATE` >= input$dateRange1[1] & `INSPECTION DATE` <= input$dateRange1[2])
     ggplotly(
       ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y=SCORE))+
       geom_line()+
