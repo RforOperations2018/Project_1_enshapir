@@ -17,7 +17,7 @@ library(shinythemes)
 #https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
 
 #file path for data
-Resturant.file.path <- file.path('data', 'DOHMH_New_York_City_Restaurant_Inspection_Results_sml.xlsx', fsep = .Platform$file.sep)
+Resturant.file.path <- "DOHMH_New_York_City_Restaurant_Inspection_Results_morn_side.xlsx"
 
 Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
 Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
@@ -32,7 +32,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     selectizeInput(inputId = "selectResturant", 
                    label = "Resturant:", 
-                   choices = sort(unique(Resturant.load$DBA))[1:2000], 
+                   choices = sort(unique(Resturant.load$DBA)), 
                    selected = sort(unique(Resturant.load$DBA)[1]), 
                    multiple = FALSE,
                    options = list(maxItems = 1)),
@@ -70,8 +70,23 @@ body <- dashboardBody(tabItems(
             fluidRow(
               tabBox(title = "",
                      width = 12,
-                     tabPanel("Number of Violations Over Time within Zip", textOutput("VioZip")),
-                     tabPanel("Number of Violations by Comparison by Cuisine", plotlyOutput("VioCuisine")))
+                     tabPanel("Number of Violations Over Time within Zip", textOutput("VioZip"),
+                              dateRangeInput(inputId = "date", 
+                                        label ="Choose a Date",
+                                        start = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE), 
+                                        end = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
+                                        min = min(Resturant.load$`INSPECTION DATE`, na.rm = TRUE),
+                                        max = max(Resturant.load$`INSPECTION DATE`, na.rm = TRUE))),
+                     tabPanel("Comparison of Violations by Cuisine", plotlyOutput("VioCuisine"),
+                              selectInput(inputId = "selectCuis", 
+                                          label = "Cuisine",
+                                          choices = sort(unique(Resturant.load$`CUISINE DESCRIPTION`)),
+                                          multiple = TRUE,
+                                          selectize = TRUE,
+                                          selected = unique(Resturant.load$`CUISINE DESCRIPTION`)[2]))
+                        
+                     )
+                     
             )
 
     ),
@@ -94,7 +109,13 @@ server <- function(input, output, session=session) {
       # selectResturant filter
       filter(DBA == input$selectResturant)
   })
-
+  
+  cuInput <- reactive({
+    Resturant <- Resturant.load %>%
+      # selectResturant filter
+      filter(`CUISINE DESCRIPTION` == input$selectCuis | `CUISINE DESCRIPTION` ==resInput()$`CUISINE DESCRIPTION`)
+  })
+  
   output$TimeSinceInspection <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
@@ -126,9 +147,44 @@ server <- function(input, output, session=session) {
   output$vioTable <- DT::renderDataTable({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+      subset(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
     subset(resCurrent, select = c(`VIOLATION CODE`, `VIOLATION DESCRIPTION`))
   })
+  
+  # A plot showing the violations overtime of the resturant
+  output$ViolationsOverTime <- renderPlotly({
+    data1 <- resInput()
+    ggplotly(
+      ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y=SCORE))+
+      geom_line()+
+      labs(x="Inspection Dates", y="Violation Score"))
+  })
+  
+  # A plot showing the violations overtime of the resturant
+  output$VioCuisine <- renderPlotly({
+    data1 <- cuInput()
+    ggplotly(
+      ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y= SCORE, color=`CUISINE DESCRIPTION`))+
+        geom_line() +
+        labs(x="Inspection Dates", y="Violation Score"))
+  })
+  # observeEvent(input$selectResturant, {
+  #   res1 <- resInput()
+  #   radioChioce <- subset(Resturant.load, -c(res1$`CUISINE DESCRIPTION`)
+  #   updateRadioButtons(session, inputId = "selectCuis", 
+  #                      label = "Cuisine:", 
+  #                      choices = radioChioce, 
+  #                      selected = radioChioce[1])
+  # })
+
+           
+  observeEvent(input$reset, {
+    updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
+    showNotification("You have successfully reset to show all races", type = "message")
+  })
+
+  
+  
   
   # Data table of Resturnat Inspections
   output$table <- DT::renderDataTable({

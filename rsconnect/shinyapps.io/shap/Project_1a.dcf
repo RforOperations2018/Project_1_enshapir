@@ -1,0 +1,13 @@
+name: Project_1a
+title: Project_1a
+username:
+account: shap
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 463124
+bundleId: 1599146
+url: https://shap.shinyapps.io/Project_1a/
+when: 1537587133.3546
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: DOHMH_New_York_City_Restaurant_Inspection_Results_sml.xlsx|DOHMH_New_York_City_Restaurant_Inspection_Results_sml1.csv|data/DOHMH_New_York_City_Restaurant_Inspection_Results.xlsx|data/Restaurant_Inspection_Open_Data_Dictionary_082214.xlsx
