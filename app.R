@@ -61,7 +61,7 @@ body <- dashboardBody(tabItems(
           fluidRow(
             tabBox(title = "",
                    width = 12,
-                   tabPanel("Noted Major Violations", DT::dataTableOutput("vioTable")),
+                   tabPanel("Noted Crititcal Violations", DT::dataTableOutput("vioTable")),
                    tabPanel("Number of Violations Over Time", plotlyOutput("ViolationsOverTime"),
                             uiOutput("dateRange")
                             )
@@ -74,12 +74,7 @@ body <- dashboardBody(tabItems(
               tabBox(title = "",
                      width = 12,
                      tabPanel("Number of Crititcal Violations Over Time Comparison",plotlyOutput("Viocrit"),
-                              selectInput(inputId = "streetComp", 
-                                          label = "Cuisine",
-                                          choices = sort(unique(Resturant.load$DBA)),
-                                          multiple = TRUE,
-                                          selectize = TRUE,
-                                          selected = unique(Resturant.load$DBA)[2])),
+                              uiOutput("streetComp1")),
                      tabPanel("Comparison of Violations by Cuisine", plotlyOutput("VioCuisine"),
                               selectInput(inputId = "selectCuis", 
                                           label = "Cuisine",
@@ -135,6 +130,21 @@ server <- function(input, output, session=session) {
                    max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)
                    )
     })
+  
+  
+  output$streetComp1 <- renderUI({
+    resChoice <-  Resturant.load %>% filter(DBA != resInput()$DBA)
+    
+    selectInput(inputId = "streetComp",
+                   label = "Cuisine",
+                   choices = sort(unique(resChoice$DBA)),
+                   multiple = TRUE,
+                   selectize = TRUE,
+                   selected = unique(resChoice$DBA)[1]
+                   )
+  })
+  
+
   
   
   output$TimeSinceInspection <- renderValueBox({
@@ -196,20 +206,7 @@ server <- function(input, output, session=session) {
         geom_line() +
         labs(x="Inspection Dates", y="Number of Critical Violation"))
   })
-  
-  # observeEvent(input$selectResturant, {
-  #   updateDateRangeInput(session = session,
-  #                        inputId = date,
-  #                        start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-  #                        end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-  #                        min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-  #                        max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)) 
-  # })
-           
-  # observeEvent(input$reset, {
-  #   updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
-  #   showNotification("You have successfully reset to show all races", type = "message")
-  # })
+
 
 
   
@@ -242,4 +239,19 @@ shinyApp(ui = ui, server = server)
 #                      label = "Cuisine:", 
 #                      choices = radioChioce, 
 #                      selected = radioChioce[1])
+# })
+
+
+# observeEvent(input$selectResturant, {
+#   updateDateRangeInput(session = session,
+#                        inputId = date,
+#                        start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+#                        end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+#                        min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
+#                        max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)) 
+# })
+
+# observeEvent(input$reset, {
+#   updateSelectInput(session, "SelectedRace", selected = c("ASIAN", "BLACK"))
+#   showNotification("You have successfully reset to show all races", type = "message")
 # })
