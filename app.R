@@ -17,7 +17,7 @@ library(shinythemes)
 #https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
 
 #file path for data
-Resturant.file.path <- file.path('data', 'DOHMH_New_York_City_Restaurant_Inspection_Results.xlsx', fsep = .Platform$file.sep)
+Resturant.file.path <- file.path('data', 'DOHMH_New_York_City_Restaurant_Inspection_Results_sml.xlsx', fsep = .Platform$file.sep)
 
 Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
 Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
