@@ -23,9 +23,10 @@ Resturant.file.path <- "DOHMH_New_York_City_Restaurant_Inspection_Results_morn_s
 Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
 Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
 Resturant.load <- Resturant.load %>% filter(`INSPECTION DATE` > "2014-01-01" & BORO == 'MANHATTAN')
-
+# Mutate could have done your filtering here as well.
 
 # Define dashboard UI
+# Iknow the header is mostly useless but this is where your title goes!
 header <- dashboardHeader()
 
 sidebar <- dashboardSidebar(
