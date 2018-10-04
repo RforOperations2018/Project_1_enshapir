@@ -151,15 +151,25 @@ server <- function(input, output, session=session) {
   
   #creating a dataset of restaurants selected by cuisine type
   cuInput <- reactive({
-    Resturant <- Resturant.load %>%
-      # selectResturant filter
-      filter(`Cuisine description` == input$selectCuis | `Cuisine description` ==resInput()$`Cuisine description`)
+    #create url to get data
+    url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json?$select=inspection_date, avg(score) AS avg_score, cuisine_description&$group=inspection_date, cuisine_description&$where=cuisine_description in('Ice Cream, Gelato, Yogurt, Ices','American','Italian','Ethiopian','Indian','Pizza','Thai','Chinese','Japanese','Middle Eastern')&$limit=100")
+    #get the api data
+    r <- RETRY("GET", url = URLencode(url))
+    # Extract Content
+    c <- content(r, "text")
+    # Basic gsub to make NA's consistent with R
+    json <- gsub('NaN', 'NA', c, perl = TRUE)
+    # Create Dataframe
+    Resturant.data <- data.frame(fromJSON(json)) %>% 
+      filter(cuisine_description == input$selectCuis | cuisine_description ==resInput()$cuisine_description)
+    
+    return(Resturant.data)
   })
   
   #creating a dataset with counts of critical inputs per resturant
   resInput2 <- reactive({
     Resturant <- Resturant.load %>% 
-      group_by(dba, `inspection date`, STREET, SCORE) %>% 
+      group_by(dba, inspection_date, STREET, score) %>% 
       summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>% 
       filter(dba %in% input$streetComp | dba %in% resInput()$dba)
   })
@@ -168,10 +178,10 @@ server <- function(input, output, session=session) {
   output$dateRange <- renderUI({
     dateRangeInput(inputId = "dateRange1",
                    label = "Pick a Date Range",
-                   start = min(resInput()$`inspection date`, na.rm = TRUE), 
-                   end = max(resInput()$`inspection date`, na.rm = TRUE),
-                   min = min(resInput()$`inspection date`, na.rm = TRUE),
-                   max = max(resInput()$`inspection date`, na.rm = TRUE)
+                   start = min(resInput()$inspection_date, na.rm = TRUE), 
+                   end = max(resInput()$inspection_date, na.rm = TRUE),
+                   min = min(resInput()$inspection_date, na.rm = TRUE),
+                   max = max(resInput()$inspection_date, na.rm = TRUE)
                    )
     })
   
@@ -190,14 +200,14 @@ server <- function(input, output, session=session) {
   
   #A selection box for cuisine type that does not show the currently selected restaurant’s cuisine as an option
   output$selectCuis1 <- renderUI({
-    cuChoice <-  Resturant.load %>% filter(`Cuisine description` != resInput()$`Cuisine description`)
+    cuChoice <-  Resturant.load %>% filter(cuisine_description != resInput()$cuisine_description)
     
     selectInput(inputId = "selectCuis",
                 label = "Cuisine",
-                choices = sort(unique(cuChoice$`Cuisine description`)),
+                choices = sort(unique(cuChoice$cuisine_description)),
                 multiple = TRUE,
                 selectize = TRUE,
-                selected = unique(cuChoice$`Cuisine description`)[1]
+                selected = unique(cuChoice$cuisine_description)[1]
     )
   })
   
@@ -205,9 +215,9 @@ server <- function(input, output, session=session) {
   output$TimeSinceInspection <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`inspection date` == max(res$`inspection date`))
+      filter(inspection_date == max(res$inspection_date))
     currentDate <- Sys.Date()
-    lastInspect <- resCurrent$`inspection date`
+    lastInspect <- resCurrent$inspection_date
     days.since.last <- as.numeric(currentDate - lastInspect)
     valueBox(subtitle = "Days Since Last Inspection", value = days.since.last, icon = icon("calendar"), color = "green")
   })
@@ -216,7 +226,7 @@ server <- function(input, output, session=session) {
   output$GradeLast <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`inspection date` == max(res$`inspection date`))
+      filter(inspection_date == max(res$inspection_date))
     valueBox(subtitle = "Grade on Last Inspection", value = resCurrent$GRADE, icon = icon("id-card-o"), color = "green")
   })
   
@@ -224,8 +234,8 @@ server <- function(input, output, session=session) {
   output$ViolationCnt <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`inspection date` == max(res$`inspection date`))
-    valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$SCORE, icon = icon("exclamation-triangle "), color = "green")
+      filter(inspection_date == max(res$inspection_date))
+    valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$score, icon = icon("exclamation-triangle "), color = "green")
   })
 
   
@@ -233,16 +243,16 @@ server <- function(input, output, session=session) {
   output$vioTable <- DT::renderDataTable({
     res <- resInput()
     resCurrent <- res %>%
-      subset(`inspection date` == max(res$`inspection date`))
+      subset(inspection_date == max(res$inspection_date))
     subset(resCurrent, select = c(`VIOLATION CODE`, `VIOLATION DESCRIPTION`))
   })
   
   # A plot showing the violations overtime of the resturant
   output$ViolationsOverTime <- renderPlotly({
     data1 <- resInput()
-    data1 <- data1 %>% filter(`inspection date` >= input$dateRange1[1] & `inspection date` <= input$dateRange1[2])
+    data1 <- data1 %>% filter(inspection_date >= input$dateRange1[1] & inspection_date <= input$dateRange1[2])
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=`inspection date`, y=SCORE))+
+      ggplot(data = data1, mapping = aes(x=inspection_date, y=score))+
       geom_line()+
       labs(x="Inspection Dates", y="Violation Score"))
   })
@@ -251,7 +261,7 @@ server <- function(input, output, session=session) {
   output$VioCuisine <- renderPlotly({
     data1 <- cuInput()
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=`inspection date`, y= SCORE, color=`Cuisine description`))+
+      ggplot(data = data1, mapping = aes(x=as.Date(inspection_date), y= as.numeric(as.character(avg_score)), color=cuisine_description))+
         geom_line() +
         labs(x="Inspection Dates", y="Violation Score"))
   })
@@ -260,7 +270,7 @@ server <- function(input, output, session=session) {
   output$Viocrit <- renderPlotly({
     data1 <- resInput2()
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=`inspection date`, y= crits, color=dba))+
+      ggplot(data = data1, mapping = aes(x=inspection_date, y= crits, color=dba))+
         geom_line() +
         labs(x="Inspection Dates", y="Number of Critical Violation"))
   })
