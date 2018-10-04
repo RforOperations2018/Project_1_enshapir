@@ -8,10 +8,37 @@ library(shiny)
 library(shinydashboard)
 library(tidyverse)
 library(readxl)
-library(rjson)
+library(jsonlite)
 library(plotly)
 library(DT)
 library(shinythemes)
+library(httr)
+library(htmltools)
+
+# only boro of brooklyn and limits 10
+# https://data.cityofnewyork.us/resource/9w7m-hzhe.json?boro=BROOKLYN&$limit=10
+
+#41615257 40813994 40685734 41698319 50048821 50003527 41561808 40824179 40388091 50066109 41241757 40918579 41365100
+#  $where=annual_salary between '40000' and '60000'
+
+#  $where=camis in('41615257','40813994','40685734','41698319','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')
+
+$select=location, magnitude AS richter
+
+url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$select=camis, dba","$where=camis in('41615257','40813994','40685734','41698319','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
+
+
+r <- RETRY("GET", url = URLencode(url))
+# Extract Content
+c <- content(r, "text")
+# Basic gsub to make NA's consistent with R
+json <- gsub('NaN', 'NA', c, perl = TRUE)
+# Create Dataframe
+test <- data.frame(fromJSON(json))
+
+
+
+
 
 #DOHMH New York City Restaurant Inspection Results
 #https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
