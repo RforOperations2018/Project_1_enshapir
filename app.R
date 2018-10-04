@@ -21,7 +21,8 @@ library(htmltools)
 #https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
 
 #column names
-#action,boro,building,camis,critical_flag,cuisine_description,dba,inspection_date,inspection_type,phone,record_date,score,street,violation_code,violation_description,zipcode,grade,grade_date
+#action,boro,building,camis,critical_flag,cuisine_description,dba,inspection_date,inspection_type,phone,record_date,score,
+#street,violation_code,violation_description,zipcode,grade,grade_date
 
 #41615257 40813994 40685734 50048821 50003527 41561808 40824179 40388091 50066109 41241757 40918579 41365100
 #  $where=annual_salary between '40000' and '60000'
@@ -144,9 +145,11 @@ server <- function(input, output, session=session) {
     # Basic gsub to make NA's consistent with R
     json <- gsub('NaN', 'NA', c, perl = TRUE)
     # Create Dataframe
-    Resturant.data <- data.frame(fromJSON(json))
+    Resturant.data1 <- data.frame(fromJSON(json))
     
-    return(Resturant.data)
+    Resturant.data1$inspection_date <- as.Date(Resturant.data1$inspection_date)
+    
+    return(Resturant.data1)
   })
   
   #creating a dataset of restaurants selected by cuisine type
@@ -160,10 +163,10 @@ server <- function(input, output, session=session) {
     # Basic gsub to make NA's consistent with R
     json <- gsub('NaN', 'NA', c, perl = TRUE)
     # Create Dataframe
-    Resturant.data <- data.frame(fromJSON(json)) %>% 
+    Resturant.data2 <- data.frame(fromJSON(json)) %>% 
       filter(cuisine_description == input$selectCuis | cuisine_description ==resInput()$cuisine_description)
     
-    return(Resturant.data)
+    return(Resturant.data2)
   })
   
   #creating a dataset with counts of critical inputs per resturant
@@ -227,7 +230,7 @@ server <- function(input, output, session=session) {
     res <- resInput()
     resCurrent <- res %>%
       filter(inspection_date == max(res$inspection_date))
-    valueBox(subtitle = "Grade on Last Inspection", value = resCurrent$GRADE, icon = icon("id-card-o"), color = "green")
+    valueBox(subtitle = "Grade on Last Inspection", value = resCurrent$grade, icon = icon("id-card-o"), color = "green")
   })
   
   #A value box showing the Violation score on the most recent inspection 
@@ -244,7 +247,7 @@ server <- function(input, output, session=session) {
     res <- resInput()
     resCurrent <- res %>%
       subset(inspection_date == max(res$inspection_date))
-    subset(resCurrent, select = c(`VIOLATION CODE`, `VIOLATION DESCRIPTION`))
+    subset(resCurrent, select = c(violation_code,violation_description))
   })
   
   # A plot showing the violations overtime of the resturant
