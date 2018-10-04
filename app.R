@@ -15,41 +15,40 @@ library(shinythemes)
 library(httr)
 library(htmltools)
 
-# only boro of brooklyn and limits 10
-# https://data.cityofnewyork.us/resource/9w7m-hzhe.json?boro=BROOKLYN&$limit=10
 
-#41615257 40813994 40685734 41698319 50048821 50003527 41561808 40824179 40388091 50066109 41241757 40918579 41365100
+
+#DOHMH New York City Restaurant Inspection Results
+#https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
+
+#column names
+#action,boro,building,camis,critical_flag,cuisine_description,dba,inspection_date,inspection_type,phone,record_date,score,street,violation_code,violation_description,zipcode,grade,grade_date
+
+#41615257 40813994 40685734 50048821 50003527 41561808 40824179 40388091 50066109 41241757 40918579 41365100
 #  $where=annual_salary between '40000' and '60000'
 
-#  $where=camis in('41615257','40813994','40685734','41698319','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')
+#  $where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')
 
-$select=location, magnitude AS richter
 
-url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$select=camis, dba","$where=camis in('41615257','40813994','40685734','41698319','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
+#URL to pull out just the names and uniquie ids along with just the resturants I want to focus on
+url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$select=camis, dba","&","$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
 
+url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
 
 r <- RETRY("GET", url = URLencode(url))
 # Extract Content
 c <- content(r, "text")
 # Basic gsub to make NA's consistent with R
 json <- gsub('NaN', 'NA', c, perl = TRUE)
-# Create Dataframe
-test <- data.frame(fromJSON(json))
 
 
-
-
-
-#DOHMH New York City Restaurant Inspection Results
-#https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
-
-#file path for data
-Resturant.file.path <- "DOHMH_New_York_City_Restaurant_Inspection_Results_morn_side.xlsx"
+# #file path for data
+# Resturant.file.path <- "DOHMH_New_York_City_Restaurant_Inspection_Results_morn_side.xlsx"
 
 #loading in resturant data
-Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
-Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
-Resturant.load <- Resturant.load %>% filter(`INSPECTION DATE` > "2014-01-01" & BORO == 'MANHATTAN')
+Resturant.load <- data.frame(fromJSON(json))
+# Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
+# Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
+# Resturant.load <- Resturant.load %>% filter(`INSPECTION DATE` > "2014-01-01" & BORO == 'MANHATTAN')
 # Mutate could have done your filtering here as well.
 
 # Define dashboard UI
@@ -61,8 +60,8 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     selectizeInput(inputId = "selectResturant", 
                    label = "Resturant:", 
-                   choices = sort(unique(Resturant.load$DBA)), 
-                   selected = sort(unique(Resturant.load$DBA)[1]), 
+                   choices = sort(unique(Resturant.load$dba)), 
+                   selected = sort(unique(Resturant.load$dba)[1]), 
                    multiple = FALSE,
                    options = list(maxItems = 1)),
     
@@ -131,63 +130,74 @@ body <- dashboardBody(tabItems(
 
 # Define server logic
 server <- function(input, output, session=session) {
-
+  
   #creating a dataset of a single restaurant's inspections
   resInput <- reactive({
-    Resturant <- Resturant.load %>%
-      # selectResturant filter
-      filter(DBA == input$selectResturant)
+    #get unique id to query with
+    camis.code <- unique(Resturant.load$camis[Resturant.load$dba == input$selectResturant])
+  #create url to get data
+    url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$where=camis in('", camis.code,"')",'&$limit=10000')
+    
+    r <- RETRY("GET", url = URLencode(url))
+    # Extract Content
+    c <- content(r, "text")
+    # Basic gsub to make NA's consistent with R
+    json <- gsub('NaN', 'NA', c, perl = TRUE)
+    # Create Dataframe
+    Resturant.data <- data.frame(fromJSON(json))
+    
+    return(Resturant.data)
   })
   
   #creating a dataset of restaurants selected by cuisine type
   cuInput <- reactive({
     Resturant <- Resturant.load %>%
       # selectResturant filter
-      filter(`CUISINE DESCRIPTION` == input$selectCuis | `CUISINE DESCRIPTION` ==resInput()$`CUISINE DESCRIPTION`)
+      filter(`Cuisine description` == input$selectCuis | `Cuisine description` ==resInput()$`Cuisine description`)
   })
   
   #creating a dataset with counts of critical inputs per resturant
   resInput2 <- reactive({
     Resturant <- Resturant.load %>% 
-      group_by(DBA, `INSPECTION DATE`, STREET, SCORE) %>% 
+      group_by(dba, `inspection date`, STREET, SCORE) %>% 
       summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>% 
-      filter(DBA %in% input$streetComp | DBA %in% resInput()$DBA)
+      filter(dba %in% input$streetComp | dba %in% resInput()$dba)
   })
   
   #A date range selection for the currently selected restaurant’s inspection dates
   output$dateRange <- renderUI({
     dateRangeInput(inputId = "dateRange1",
                    label = "Pick a Date Range",
-                   start = min(resInput()$`INSPECTION DATE`, na.rm = TRUE), 
-                   end = max(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-                   min = min(resInput()$`INSPECTION DATE`, na.rm = TRUE),
-                   max = max(resInput()$`INSPECTION DATE`, na.rm = TRUE)
+                   start = min(resInput()$`inspection date`, na.rm = TRUE), 
+                   end = max(resInput()$`inspection date`, na.rm = TRUE),
+                   min = min(resInput()$`inspection date`, na.rm = TRUE),
+                   max = max(resInput()$`inspection date`, na.rm = TRUE)
                    )
     })
   
   #A selection box for resturant that does not show the currently selected restaurant as an option
   output$streetComp1 <- renderUI({
-    resChoice <-  Resturant.load %>% filter(DBA != resInput()$DBA)
+    resChoice <-  Resturant.load %>% filter(dba != resInput()$dba)
     
     selectInput(inputId = "streetComp",
                    label = "Resturant Comparison",
-                   choices = sort(unique(resChoice$DBA)),
+                   choices = sort(unique(resChoice$dba)),
                    multiple = TRUE,
                    selectize = TRUE,
-                   selected = unique(resChoice$DBA)[1]
+                   selected = unique(resChoice$dba)[1]
                    )
   })
   
   #A selection box for cuisine type that does not show the currently selected restaurant’s cuisine as an option
   output$selectCuis1 <- renderUI({
-    cuChoice <-  Resturant.load %>% filter(`CUISINE DESCRIPTION` != resInput()$`CUISINE DESCRIPTION`)
+    cuChoice <-  Resturant.load %>% filter(`Cuisine description` != resInput()$`Cuisine description`)
     
     selectInput(inputId = "selectCuis",
                 label = "Cuisine",
-                choices = sort(unique(cuChoice$`CUISINE DESCRIPTION`)),
+                choices = sort(unique(cuChoice$`Cuisine description`)),
                 multiple = TRUE,
                 selectize = TRUE,
-                selected = unique(cuChoice$`CUISINE DESCRIPTION`)[1]
+                selected = unique(cuChoice$`Cuisine description`)[1]
     )
   })
   
@@ -195,9 +205,9 @@ server <- function(input, output, session=session) {
   output$TimeSinceInspection <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+      filter(`inspection date` == max(res$`inspection date`))
     currentDate <- Sys.Date()
-    lastInspect <- resCurrent$`INSPECTION DATE`
+    lastInspect <- resCurrent$`inspection date`
     days.since.last <- as.numeric(currentDate - lastInspect)
     valueBox(subtitle = "Days Since Last Inspection", value = days.since.last, icon = icon("calendar"), color = "green")
   })
@@ -206,7 +216,7 @@ server <- function(input, output, session=session) {
   output$GradeLast <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+      filter(`inspection date` == max(res$`inspection date`))
     valueBox(subtitle = "Grade on Last Inspection", value = resCurrent$GRADE, icon = icon("id-card-o"), color = "green")
   })
   
@@ -214,7 +224,7 @@ server <- function(input, output, session=session) {
   output$ViolationCnt <- renderValueBox({
     res <- resInput()
     resCurrent <- res %>%
-      filter(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+      filter(`inspection date` == max(res$`inspection date`))
     valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$SCORE, icon = icon("exclamation-triangle "), color = "green")
   })
 
@@ -223,16 +233,16 @@ server <- function(input, output, session=session) {
   output$vioTable <- DT::renderDataTable({
     res <- resInput()
     resCurrent <- res %>%
-      subset(`INSPECTION DATE` == max(res$`INSPECTION DATE`))
+      subset(`inspection date` == max(res$`inspection date`))
     subset(resCurrent, select = c(`VIOLATION CODE`, `VIOLATION DESCRIPTION`))
   })
   
   # A plot showing the violations overtime of the resturant
   output$ViolationsOverTime <- renderPlotly({
     data1 <- resInput()
-    data1 <- data1 %>% filter(`INSPECTION DATE` >= input$dateRange1[1] & `INSPECTION DATE` <= input$dateRange1[2])
+    data1 <- data1 %>% filter(`inspection date` >= input$dateRange1[1] & `inspection date` <= input$dateRange1[2])
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y=SCORE))+
+      ggplot(data = data1, mapping = aes(x=`inspection date`, y=SCORE))+
       geom_line()+
       labs(x="Inspection Dates", y="Violation Score"))
   })
@@ -241,7 +251,7 @@ server <- function(input, output, session=session) {
   output$VioCuisine <- renderPlotly({
     data1 <- cuInput()
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y= SCORE, color=`CUISINE DESCRIPTION`))+
+      ggplot(data = data1, mapping = aes(x=`inspection date`, y= SCORE, color=`Cuisine description`))+
         geom_line() +
         labs(x="Inspection Dates", y="Violation Score"))
   })
@@ -250,7 +260,7 @@ server <- function(input, output, session=session) {
   output$Viocrit <- renderPlotly({
     data1 <- resInput2()
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=`INSPECTION DATE`, y= crits, color=DBA))+
+      ggplot(data = data1, mapping = aes(x=`inspection date`, y= crits, color=dba))+
         geom_line() +
         labs(x="Inspection Dates", y="Number of Critical Violation"))
   })
@@ -260,7 +270,7 @@ server <- function(input, output, session=session) {
   
   # Data table of Resturnat Inspections
   output$table <- DT::renderDataTable({
-    subset(resInput(), select = c(DBA,`CUISINE DESCRIPTION`, `VIOLATION CODE`, SCORE, GRADE, `INSPECTION DATE`,`INSPECTION TYPE`))
+    subset(resInput(), select = c(dba,cuisine_description, score, grade, inspection_date, inspection_type))
   })
   
 }
