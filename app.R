@@ -54,7 +54,7 @@ Resturant.load <- data.frame(fromJSON(json))
 
 # Define dashboard UI
 # Iknow the header is mostly useless but this is where your title goes!
-header <- dashboardHeader()
+header <- dashboardHeader(title = 'Restaurant Inspections')
 
 sidebar <- dashboardSidebar(
   
@@ -285,7 +285,7 @@ server <- function(input, output, session=session) {
   output$Viocrit <- renderPlotly({
     data1 <- resInput2()
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=inspection_date, y= crits, color=dba))+
+      ggplot(data = data1, mapping = aes(x=inspection_date, y=as.numeric(as.character(crits)), color=dba))+
         geom_line() +
         labs(x="Inspection Dates", y="Number of Critical Violation"))
   })
