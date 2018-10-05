@@ -1,13 +1,12 @@
 # ----------------------
 #enshapir
 # 
-# project 1
+# project 1 updated for HW 4
 #-----------------------
 
 library(shiny)
 library(shinydashboard)
 library(tidyverse)
-library(readxl)
 library(jsonlite)
 library(plotly)
 library(DT)
@@ -20,20 +19,9 @@ library(htmltools)
 #DOHMH New York City Restaurant Inspection Results
 #https://data.cityofnewyork.us/Health/DOHMH-New-York-City-Restaurant-Inspection-Results/43nn-pn8j
 
-#column names
-#action,boro,building,camis,critical_flag,cuisine_description,dba,inspection_date,inspection_type,phone,record_date,score,
-#street,violation_code,violation_description,zipcode,grade,grade_date
-
-#41615257 40813994 40685734 50048821 50003527 41561808 40824179 40388091 50066109 41241757 40918579 41365100
-#  $where=annual_salary between '40000' and '60000'
-
-#  $where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')
-
 
 #URL to pull out just the names and uniquie ids along with just the resturants I want to focus on
 url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$select=camis, dba, cuisine_description","&","$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
-
-url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
 
 r <- RETRY("GET", url = URLencode(url))
 # Extract Content
@@ -42,18 +30,10 @@ c <- content(r, "text")
 json <- gsub('NaN', 'NA', c, perl = TRUE)
 
 
-# #file path for data
-# Resturant.file.path <- "DOHMH_New_York_City_Restaurant_Inspection_Results_morn_side.xlsx"
-
 #loading in resturant data
 Resturant.load <- data.frame(fromJSON(json))
-# Resturant.load <- read_xlsx(path = Resturant.file.path, sheet = 1, col_names = TRUE)
-# Resturant.load$`INSPECTION DATE` <- as.Date(Resturant.load$`INSPECTION DATE`)
-# Resturant.load <- Resturant.load %>% filter(`INSPECTION DATE` > "2014-01-01" & BORO == 'MANHATTAN')
-# Mutate could have done your filtering here as well.
 
 # Define dashboard UI
-# Iknow the header is mostly useless but this is where your title goes!
 header <- dashboardHeader(title = 'Restaurant Inspections')
 
 sidebar <- dashboardSidebar(
