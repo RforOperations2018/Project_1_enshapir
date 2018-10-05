@@ -5,9 +5,9 @@ account: shap
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 463124
-bundleId: 1599734
+bundleId: 1624290
 url: https://shap.shinyapps.io/Project_1a/
-when: 1537633624.39867
+when: 1538710751.83004
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: data/DOHMH_New_York_City_Restaurant_Inspection_Results.xlsx|data/DOHMH_New_York_City_Restaurant_Inspection_Results_sml1.xlsx|data/Restaurant_Inspection_Open_Data_Dictionary_082214.xlsx
+ignoredFiles: DOHMH_New_York_City_Restaurant_Inspection_Results_morn_side.xlsx|data/DOHMH_New_York_City_Restaurant_Inspection_Results.xlsx|data/DOHMH_New_York_City_Restaurant_Inspection_Results_sml1.xlsx|data/Restaurant_Inspection_Open_Data_Dictionary_082214.xlsx

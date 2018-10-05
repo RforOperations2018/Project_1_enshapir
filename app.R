@@ -165,7 +165,9 @@ server <- function(input, output, session=session) {
     # Create Dataframe
     Resturant.data2 <- data.frame(fromJSON(json)) %>% 
       filter(cuisine_description == input$selectCuis | cuisine_description ==resInput()$cuisine_description)
-    
+   
+     Resturant.data2$inspection_date <- as.Date(Resturant.data2$inspection_date)
+     
     return(Resturant.data2)
   })
   
@@ -267,7 +269,7 @@ server <- function(input, output, session=session) {
     data1 <- resInput()
     data1 <- data1 %>% filter(inspection_date >= input$dateRange1[1] & inspection_date <= input$dateRange1[2])
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=inspection_date, y=score))+
+      ggplot(data = data1, mapping = aes(x=inspection_date, y=as.numeric(as.character(score))))+
       geom_line()+
       labs(x="Inspection Dates", y="Violation Score"))
   })
@@ -276,7 +278,7 @@ server <- function(input, output, session=session) {
   output$VioCuisine <- renderPlotly({
     data1 <- cuInput()
     ggplotly(
-      ggplot(data = data1, mapping = aes(x=as.Date(inspection_date), y= as.numeric(as.character(avg_score)), color=cuisine_description))+
+      ggplot(data = data1, mapping = aes(x=inspection_date, y= as.numeric(as.character(avg_score)), color=cuisine_description))+
         geom_line() +
         labs(x="Inspection Dates", y="Violation Score"))
   })
