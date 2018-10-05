@@ -31,7 +31,7 @@ library(htmltools)
 
 
 #URL to pull out just the names and uniquie ids along with just the resturants I want to focus on
-url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$select=camis, dba","&","$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
+url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$select=camis, dba, cuisine_description","&","$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
 
 url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?',"$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')",'&$limit=10000')
 
@@ -155,7 +155,7 @@ server <- function(input, output, session=session) {
   #creating a dataset of restaurants selected by cuisine type
   cuInput <- reactive({
     #create url to get data
-    url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json?$select=inspection_date, avg(score) AS avg_score, cuisine_description&$group=inspection_date, cuisine_description&$where=cuisine_description in('Ice Cream, Gelato, Yogurt, Ices','American','Italian','Ethiopian','Indian','Pizza','Thai','Chinese','Japanese','Middle Eastern')&$limit=100")
+    url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json?$select=inspection_date, avg(score) AS avg_score, cuisine_description&$group=inspection_date, cuisine_description&$where=cuisine_description in('Ice Cream, Gelato, Yogurt, Ices','American','Italian','Ethiopian','Indian','Pizza','Thai','Chinese','Japanese','Middle Eastern')&$limit=1000")
     #get the api data
     r <- RETRY("GET", url = URLencode(url))
     # Extract Content
@@ -171,10 +171,22 @@ server <- function(input, output, session=session) {
   
   #creating a dataset with counts of critical inputs per resturant
   resInput2 <- reactive({
-    Resturant <- Resturant.load %>% 
-      group_by(dba, inspection_date, STREET, score) %>% 
-      summarise(crits = sum(`CRITICAL FLAG`=="Critical")) %>% 
-      filter(dba %in% input$streetComp | dba %in% resInput()$dba)
+      #get unique id to query with
+      #create url to get data
+      url <- paste0("https://data.cityofnewyork.us/resource/9w7m-hzhe.json",'?$select=dba, inspection_date, score, count(critical_flag) AS crits&$group=dba, inspection_date, score',"&$where=camis in('41615257','40813994','40685734','50048821','50003527','41561808','40824179','40388091','50066109','41241757','40918579','41365100')AND critical_flag='Critical'",'&$limit=10000')
+      r <- RETRY("GET", url = URLencode(url))
+      # Extract Content
+      c <- content(r, "text")
+      # Basic gsub to make NA's consistent with R
+      json <- gsub('NaN', 'NA', c, perl = TRUE)
+      # Create Dataframe
+      Resturant.data3 <- data.frame(fromJSON(json)) %>% 
+        filter(dba %in% input$streetComp | dba %in% resInput()$dba)
+      
+      Resturant.data3$inspection_date <- as.Date(Resturant.data3$inspection_date)
+      
+      return(Resturant.data3)
+      
   })
   
   #A date range selection for the currently selected restaurant’s inspection dates
