@@ -29,6 +29,7 @@ c <- content(r, "text")
 # Basic gsub to make NA's consistent with R
 json <- gsub('NaN', 'NA', c, perl = TRUE)
 
+# FYI there is also a package called RSocrata that will let you make API calls to the NYC a bit easier. Also, technically I believe you need at oken for any type of request which is over 1000. Limiting should handle this a bit though
 
 #loading in resturant data
 Resturant.load <- data.frame(fromJSON(json))
@@ -162,6 +163,7 @@ server <- function(input, output, session=session) {
       # Basic gsub to make NA's consistent with R
       json <- gsub('NaN', 'NA', c, perl = TRUE)
       # Create Dataframe
+      # This works, but isn't necessarily the way I would have done it.
       Resturant.data3 <- data.frame(fromJSON(json)) %>% 
         filter(dba %in% input$streetComp | dba %in% resInput()$dba)
       
@@ -232,7 +234,9 @@ server <- function(input, output, session=session) {
     res <- resInput()
     resCurrent <- res %>%
       filter(inspection_date == max(res$inspection_date))
-    valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$score, icon = icon("exclamation-triangle "), color = "green")
+    # How low of a score?
+    valueBox(subtitle = "Violation Score (Lower is Better)", value = resCurrent$score,
+             icon = icon("exclamation-triangle "), color = "green")
   })
 
   
